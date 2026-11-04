@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OrientPro — Trouve ta voie</title>
+  <meta name="description" content="Guide d'orientation : découvre les métiers et les formations de la médecine, de l'industrie et du secteur privé.">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+  <!-- ===== EN-TÊTE ===== -->
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="#accueil" class="logo">Orient<span>Pro</span></a>
+
+      <nav class="nav" id="nav">
+        <a href="#accueil">Accueil</a>
+        <a href="#secteurs">Les 3 secteurs</a>
+        <a href="#quiz">Test d'orientation</a>
+        <a href="#comparateur">Comparateur</a>
+        <a href="#contact">Contact</a>
+      </nav>
+
+      <button class="nav-toggle" id="navToggle" aria-label="Ouvrir le menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- ===== ACCUEIL ===== -->
+    <section class="hero" id="accueil">
+      <div class="container hero-inner">
+        <div class="hero-text">
+          <p class="eyebrow">Guide d'orientation 2026</p>
+          <h1>Sais-tu ce que tu veux apprendre&nbsp;? <em>On t'aide à choisir.</em></h1>
+          <p class="lead">
+            Trois grands mondes t'attendent : la <strong>médecine</strong>, l'<strong>industrie</strong>
+            ou le <strong>secteur privé</strong>. Explore les métiers, les formations, les salaires
+            et les débouchés — puis lance le test pour trouver ta voie.
+          </p>
+          <div class="hero-actions">
+            <a href="#quiz" class="btn btn-primary">Faire le test d'orientation</a>
+            <a href="#secteurs" class="btn btn-ghost">Explorer les secteurs</a>
+          </div>
+        </div>
+
+        <div class="hero-cards" aria-hidden="true">
+          <div class="float-card c1">🩺 Médecine</div>
+          <div class="float-card c2">⚙️ Industrie</div>
+          <div class="float-card c3">💼 Secteur privé</div>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="container stats-grid">
+          <div><strong data-count="3">0</strong><span>secteurs explorés</span></div>
+          <div><strong data-count="36">0</strong><span>métiers présentés</span></div>
+          <div><strong data-count="24">0</strong><span>formations détaillées</span></div>
+          <div><strong data-count="10">0</strong><span>questions au test</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== SECTEURS ===== -->
+    <section class="section" id="secteurs">
+      <div class="container">
+        <div class="section-head">
+          <p class="eyebrow">Par où commencer</p>
+          <h2>Choisis un secteur</h2>
+          <p>Chaque domaine a ses métiers, ses formations et son rythme de vie. Clique sur une carte pour tout voir.</p>
+        </div>
+
+        <div class="sector-grid">
+          <article class="sector-card" data-sector="sante">
+            <div class="sector-icon">🩺</div>
+            <h3>Santé &amp; Médecine</h3>
+            <p>Soigner, diagnostiquer, accompagner. Un secteur exigeant mais profondément humain.</p>
+            <ul class="sector-tags">
+              <li>Médecin</li><li>Infirmier·ère</li><li>Biologiste</li><li>Dentiste</li>
+            </ul>
+            <button class="btn btn-primary btn-block" data-open="sante">Voir la fiche complète</button>
+          </article>
+
+          <article class="sector-card" data-sector="industrie">
+            <div class="sector-icon">⚙️</div>
+            <h3>Industrie</h3>
+            <p>Produire, concevoir, maintenir. La technique et l'innovation au service de la fabrication.</p>
+            <ul class="sector-tags">
+              <li>Technicien·ne</li><li>Ingénieur·e</li><li>Opérateur·rice</li><li>Mécanicien·ne</li>
+            </ul>
+            <button class="btn btn-primary btn-block" data-open="industrie">Voir la fiche complète</button>
+          </article>
+
+          <article class="sector-card" data-sector="prive">
+            <div class="sector-icon">💼</div>
+            <h3>Secteur privé</h3>
+            <p>Entreprise, commerce, gestion. La variété des postes et la rapidité d'évolution.</p>
+            <ul class="sector-tags">
+              <li>Commercial·e</li><li>Comptable</li><li>Marketing</li><li>Manager</li>
+            </ul>
+            <button class="btn btn-primary btn-block" data-open="prive">Voir la fiche complète</button>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== QUIZ ===== -->
+    <section class="section section-alt" id="quiz">
+      <div class="container narrow">
+        <div class="section-head">
+          <p class="eyebrow">10 questions</p>
+          <h2>Test d'orientation</h2>
+          <p>Réponds honnêtement : pas de bonne ou de mauvaise réponse, seulement ce qui te ressemble.</p>
+        </div>
+
+        <div class="quiz" id="quizBox">
+          <!-- injecté par assets/js/quiz.js -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== COMPARATEUR ===== -->
+    <section class="section" id="comparateur">
+      <div class="container">
+        <div class="section-head">
+          <p class="eyebrow">Vue d'ensemble</p>
+          <h2>Comparateur des 3 secteurs</h2>
+          <p>Les critères qui changent vraiment tout au quotidien.</p>
+        </div>
+
+        <div class="table-wrap">
+          <table class="compare">
+            <thead>
+              <tr>
+                <th>Critère</th>
+                <th>🩺 Santé</th>
+                <th>⚙️ Industrie</th>
+                <th>💼 Secteur privé</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><th>Durée d'études</th><td>5 à 10 ans</td><td>2 à 5 ans</td><td>2 à 5 ans</td></tr>
+              <tr><th>Niveau d'exigence</th><td>Très élevé</td><td>Élevé</td><td>Moyen à élevé</td></tr>
+              <tr><th>Salaire d'entrée*</th><td>1 800 – 2 800 €</td><td>1 600 – 2 500 €</td><td>1 500 – 2 400 €</td></tr>
+              <tr><th>Débouchés</th><td>Stables, konkurés</td><td>Abondants</td><td>Très variés</td></tr>
+              <tr><th>Rythme</th><td>Horaires décalés</td><td>3×8 / horaires fixes</td><td>Horaires de bureau</td></tr>
+              <tr><th>Contact humain</th><td>Très fort</td><td>Moyen</td><td>Très fort</td></tr>
+              <tr><th>Évolution</th><td>Spécialisation</td><td>Expertise / encadrement</td><td>Management / création</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">* Fourchettes indicatives brutes, variables selon le pays, l'expérience et le type de contrat.</p>
+      </div>
+    </section>
+
+    <!-- ===== CONTACT ===== -->
+    <section class="section section-alt" id="contact">
+      <div class="container narrow">
+        <div class="section-head">
+          <p class="eyebrow">Une question ?</p>
+          <h2>Écris-nous</h2>
+          <p>Un doute sur un métier, une formation, un salaire&nbsp;? On te répond.</p>
+        </div>
+
+        <form class="form" id="contactForm" novalidate>
+          <div class="field">
+            <label for="nom">Nom complet</label>
+            <input type="text" id="nom" name="nom" placeholder="Ex. : Amina Diallo" required>
+            <small class="error" data-for="nom"></small>
+          </div>
+
+          <div class="field">
+            <label for="email">Adresse e-mail</label>
+            <input type="email" id="email" name="email" placeholder="toi@exemple.com" required>
+            <small class="error" data-for="email"></small>
+          </div>
+
+          <div class="field">
+            <label for="secteur">Secteur qui t'intéresse</label>
+            <select id="secteur" name="secteur">
+              <option value="">— Je ne sais pas encore —</option>
+              <option value="sante">Santé &amp; Médecine</option>
+              <option value="industrie">Industrie</option>
+              <option value="prive">Secteur privé</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="message">Ton message</label>
+            <textarea id="message" name="message" rows="5" placeholder="Pose ta question ici…" required></textarea>
+            <small class="error" data-for="message"></small>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block">Envoyer</button>
+          <p class="form-success" id="formSuccess" hidden>Merci ! Ton message a bien été enregistré. Nous te répondrons rapidement.</p>
+        </form>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <p><strong>OrientPro</strong> — Le guide pour savoir ce que tu veux apprendre.</p>
+      <nav class="footer-nav">
+        <a href="#secteurs">Secteurs</a>
+        <a href="#quiz">Test</a>
+        <a href="#comparateur">Comparateur</a>
+        <a href="#contact">Contact</a>
+      </nav>
+      <p class="copyright">© 2026 OrientPro · Tous droits réservés</p>
+    </div>
+  </footer>
+
+  <!-- ===== MODALE FICHE SECTEUR ===== -->
+  <div class="modal" id="modal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <button class="modal-close" data-close aria-label="Fermer">&times;</button>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/main.js"></script>
+</body>
+</html>

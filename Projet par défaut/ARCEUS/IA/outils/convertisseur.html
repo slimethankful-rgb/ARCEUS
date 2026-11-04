@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="fr"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ARCEUS — Convertisseur Parquet → base Pégase</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", system-ui, sans-serif; background:#0b1220; color:#e2e8f0; margin:0; padding:2rem; }
+  main { max-width: 880px; margin: 0 auto; }
+  h1 { font-size: 1.35rem; color:#fbbf24; margin:0 0 .3rem; }
+  p.expl { color:#94a3b8; font-size:.95rem; line-height:1.5; margin:.2rem 0 1.1rem; }
+  fieldset { border:1px solid #24314d; border-radius:12px; padding:.9rem 1rem; margin-bottom:1rem; }
+  legend { color:#67e8f9; font-size:.85rem; padding:0 .4rem; }
+  label { display:block; font-size:.9rem; margin:.45rem 0; color:#cbd5e1; }
+  input[type=file] { color:#cbd5e1; font-size:.85rem; }
+  input[type="number"], input[type="text"] { background:#131c30; color:#e2e8f0; border:1px solid #2b3a5c; border-radius:7px; padding:.3rem .5rem; }
+  input[type="number"] { width:5.5rem; }
+  input[type="text"] { width:100%; }
+  button { background:#0ea5e9; border:none; color:#fff; font:inherit; font-size:.92rem; padding:.45rem 1.1rem; border-radius:8px; cursor:pointer; margin-right:.6rem; }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  button.sec { background:#1e293b; border:1px solid #334b6e; }
+  .bar { height:9px; background:#131c30; border-radius:6px; overflow:hidden; border:1px solid #24314d; margin:.6rem 0; }
+  .bar > div { height:100%; width:0%; background:linear-gradient(90deg,#0ea5e9,#67e8f9); transition: width .3s; }
+  pre#log { background:#0a0f1c; border:1px solid #24314d; border-radius:10px; padding:.8rem; font-size:.78rem; line-height:1.55; max-height:340px; overflow:auto; white-space:pre-wrap; word-break:break-word; }
+  table.stat { border-collapse:collapse; width:100%; font-size:.8rem; margin:.5rem 0; }
+  table.stat th, table.stat td { border:1px solid #24314d; padding:.25rem .5rem; text-align:left; }
+  table.stat th { background:#16233c; color:#93c5fd; }
+  .ok { color:#4ade80; } .ko { color:#f87171; } .warn { color:#fbbf24; }
+  .note { font-size:.76rem; color:#8fa3bf; margin-top:.8rem; line-height:1.5; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Convertisseur Parquet → base Pégase (personas FR)</h1>
+  <p class="expl">
+    Outil local : il lit des fichiers <code>.parquet</code> de <strong>profils synthétiques</strong> sur ta machine
+    (DuckDB dans le navigateur — rien n'est installé), en extrait un échantillon marqué
+    <strong>« synthétique — pas un fait vérifié »</strong>, et l'envoie au serveur IA local (port 8766) pour que
+    Pégase connaisse des <em>situations</em> réalistes. Les données ne partent nulle part ailleurs.
+    Aucun fait n'est créé : chaque fragment porte la garde-texte anti-fait.
+  </p>
+
+  <fieldset>
+    <legend>1 · Fichiers</legend>
+    <label>Fichiers .parquet locaux (picker — aucune limite, lecture directe sur ta machine) :
+      <input type="file" id="fichiers" multiple="" accept=".parquet">
+    </label>
+    <div id="distants" style="display: block; margin: 0.35rem 0px 0.1rem;">
+      <label style="font-size:.85rem; color:#94a3b8;">Ou, fichiers servis par le serveur IA (liste blanche, pour l'activité automatisée) :<span id="listeDistants"><label style="font-size: 0.85rem; color: rgb(203, 213, 225);"><input type="checkbox" value="train-00010-of-00012.parquet" class="parquet-distants"> train-00010-of-00012.parquet (231 Mo)</label><label style="font-size: 0.85rem; color: rgb(203, 213, 225);"><input type="checkbox" value="train-00011-of-00012.parquet" class="parquet-distants"> train-00011-of-00012.parquet (231 Mo)</label></span></label>
+    </div>
+    <label><input type="checkbox" id="echantillon" checked=""> Échantillonner <strong>1200 lignes</strong> par fichier
+      (sampling reservoir déterministe, graine 12345 — sinon tout le fichier)</label>
+    <label>Profils par envoi : <input type="number" id="tailleChunk" value="350" min="50" max="700"> (max 700, limite serveur)</label>
+    <label>Serveur IA local : <input type="text" id="serveur" value="http://localhost:8766"></label>
+    <label>Source déclarée (honnêteté) :
+      <input type="text" id="source" value="inconnue (fichiers remis par l'utilisateur)">
+    </label>
+  </fieldset>
+
+  <fieldset>
+    <legend>2 · Actions</legend>
+    <button id="lancer">Convertir et indexer</button>
+    <button id="telecharger" class="sec">Télécharger l'échantillon JSON</button>
+    <button id="batterieBtn" class="sec">Envoyer la batterie de tests (30 cas)</button>
+    <div class="bar"><div id="avancement" style="width: 100%;"></div></div>
+    <div id="statut" class="note"><span class="ko">Choisis UNIQUEMENT l'un des deux modes (locaux OU fichiers servis) pour éviter les doublons.</span></div>
+  </fieldset>
+
+  <div id="statsCols"><div><h3 style="font-size:.95rem;color:#67e8f9;margin:.8rem 0 .2rem">train-00010-of-00012.parquet — 83333 lignes, échantillon 1200</h3><table class="stat"><tbody><tr><th>Colonne</th><th>Remplissage</th><th>Taille moyenne</th></tr><tr><td>marital_status</td><td>100%</td><td>9</td></tr><tr><td>household_type</td><td>100%</td><td>18</td></tr><tr><td>education_level</td><td>100%</td><td>12</td></tr><tr><td>occupation</td><td>100%</td><td>20</td></tr><tr><td>commune</td><td>100%</td><td>11</td></tr><tr><td>departement</td><td>100%</td><td>9</td></tr><tr><td>country</td><td>100%</td><td>6</td></tr><tr><td>cultural_background</td><td>100%</td><td>816</td></tr><tr><td>hobbies_and_interests_list</td><td>100%</td><td>1</td></tr><tr><td>skills_and_expertise_list</td><td>100%</td><td>1</td></tr><tr><td>career_goals_and_ambitions</td><td>100%</td><td>709</td></tr><tr><td>professional_persona</td><td>100%</td><td>311</td></tr></tbody></table></div><div><h3 style="font-size:.95rem;color:#67e8f9;margin:.8rem 0 .2rem">train-00011-of-00012.parquet — 83333 lignes, échantillon 1200</h3><table class="stat"><tbody><tr><th>Colonne</th><th>Remplissage</th><th>Taille moyenne</th></tr><tr><td>marital_status</td><td>100%</td><td>9</td></tr><tr><td>household_type</td><td>100%</td><td>18</td></tr><tr><td>education_level</td><td>100%</td><td>12</td></tr><tr><td>occupation</td><td>100%</td><td>20</td></tr><tr><td>commune</td><td>100%</td><td>12</td></tr><tr><td>departement</td><td>100%</td><td>10</td></tr><tr><td>country</td><td>100%</td><td>6</td></tr><tr><td>cultural_background</td><td>100%</td><td>823</td></tr><tr><td>hobbies_and_interests_list</td><td>100%</td><td>1</td></tr><tr><td>skills_and_expertise_list</td><td>100%</td><td>1</td></tr><tr><td>career_goals_and_ambitions</td><td>100%</td><td>716</td></tr><tr><td>professional_persona</td><td>100%</td><td>313</td></tr></tbody></table></div></div>
+  <pre id="log"></pre>
+
+  <p class="note">
+    Ce que fait chaque fragment côté serveur : titre « Persona : métier », catégorie
+    <code>persona-synthetique</code>, pays <code>FR</code> quand le profil est en France,
+    garde-texte « PROFIL SYNTHÉTIQUE … jamais un fait vérifié » en tête, archive JSON brute dans
+    <code>IA/donnees/personas/</code> et index séparé <code>fragments-personas.jsonl</code> (l'export du site
+    ne l'efface pas). La batterie de tests arrive dans <code>IA/tests/batterie-personas.json</code>.
+  </p>
+</main>
+
+<script type="module">
+const $ = id => document.getElementById(id);
+const logEl = $("log"), statutEl = $("statut");
+const log = (t, cls) => {
+  const d = document.createElement("div");
+  if (cls) d.className = cls;
+  d.textContent = (t.length > 4000) ? t.slice(0, 4000) + "…" : t;
+  logEl.appendChild(d); logEl.scrollTop = logEl.scrollHeight;
+};
+const avance = p => { $("avancement").style.width = Math.round(p * 100) + "%"; };
+const attendre = ms => new Promise(r => setTimeout(r, ms));
+
+let duckdb = null, conn = null;
+const echantillonRows = [];
+const fichiersFaits = new Set();
+
+const COLS = [
+  "marital_status","household_type","education_level","occupation","commune","departement",
+  "country","cultural_background","hobbies_and_interests_list","skills_and_expertise_list",
+  "career_goals_and_ambitions","professional_persona"
+];
+
+async function initDuckDB() {
+  if (duckdb) return;
+  log("Chargement de DuckDB-WASM (CDN)…");
+  const mod = await import("https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.28.0/+esm");
+  const bundles = mod.getJsDelivrBundles();
+  const bundle = await mod.selectBundle(bundles);
+  const workerUrl = URL.createObjectURL(new Blob(["importScripts(\"" + bundle.mainWorker + "\");"], { type: "text/javascript" }));
+  const worker = new Worker(workerUrl);
+  duckdb = new mod.AsyncDuckDB(new mod.ConsoleLogger(), worker);
+  await duckdb.instantiate(bundle.mainModule, bundle.pthreadWorker);
+  conn = await duckdb.connect();
+  log("DuckDB prêt.", "ok");
+}
+
+function profilDepuisLigne(row, nomFichier, totalFichier) {
+  const d = {};
+  for (const k in row) d[k] = row[k];
+  const p = {};
+  for (const c of COLS) {
+    let v = d[c];
+    if (v === undefined && c.endsWith("_list") && d[c.slice(0, -5)] !== undefined) v = d[c.slice(0, -5)];
+    if (v === undefined || v === null) p[c] = (c.endsWith("_list") ? [] : "");
+    else if (c.endsWith("_list")) p[c] = Array.isArray(v) ? v.map(String) : [String(v)];
+    else p[c] = String(v);
+  }
+  p.__fichier = nomFichier;
+  p.__total_fichier = totalFichier;
+  return p;
+}
+
+async function chargerInventaire() {
+  /* garde anti-reponse-perimee : seul le DERNIER rendu ecrit */
+  chargerInventaire._jeton = (chargerInventaire._jeton || 0) + 1;
+  const jeton = chargerInventaire._jeton;
+  await chargerInventaireRempli(jeton);
+}
+/* ancien corps conserve */
+async function chargerInventaireRempli(jeton) {
+  const jetonCourant = chargerInventaire._jeton;
+  // Liste blanche du serveur (parquet hors dossier du site). Si vide ou KO : passage silencieux.
+  try {
+    const serveur = $("serveur").value.replace(/\/$/, "");
+    const r = await fetch(serveur + "/api/fichier/parquet", { headers: { "Accept": "application/json" } });
+    if (jeton !== jetonCourant) return;             /* un rendu plus recent est passe */
+    if (!r.ok) return;
+    const j = await r.json();
+    if (jeton !== jetonCourant) return;
+    if (!j.ok || !Array.isArray(j.fichiers) || j.fichiers.length === 0) return;
+    $("distants").style.display = "block";
+    const cible = $("listeDistants");
+    cible.textContent = "";                          /* vide les rendus precedents AVANT d'ecrire */
+    for (const f of j.fichiers) {
+      const lab = document.createElement("label");
+      lab.style.cssText = "font-size:.85rem;color:#cbd5e1;";
+      const cb = document.createElement("input");
+      cb.type = "checkbox"; cb.value = f.nom; cb.className = "parquet-distants";
+      cb.checked = f.present;
+      if (!f.present) { cb.disabled = true; lab.append(cb, " " + f.nom + " (absent sur cette machine)"); }
+      else lab.append(cb, " " + f.nom + " (" + Math.round(f.taille / 1048576) + " Mo)");
+      cible.appendChild(lab);
+    }
+  } catch (e) { /* serveur absent : toléré, le picker local reste dispo */ }
+}
+
+function distantsChoisis() {
+  /* Un seul exemplaire par fichier : l'inventaire peut etre rendu plusieurs
+     fois si l'utilisateur retouche le champ serveur (rendus empiles). */
+  const vus = new Set();
+  return Array.from(document.querySelectorAll("input.parquet-distants:checked"))
+    .map(c => c.value).filter(v => (vus.has(v) ? false : (vus.add(v), true)));
+}
+
+async function generer1(f, sampler) {
+  const buf = new Uint8Array(await f.arrayBuffer());
+  log("  lecture " + f.name + " (" + Math.round(buf.length / 1048576) + " Mo)…");
+  await duckdb.registerFileBuffer(f.name, buf);
+  const totalQ = await conn.query("SELECT count(*) AS n FROM read_parquet('" + f.name + "')");
+  const total = Number(totalQ.toArray()[0]["n"]);
+  const sql = sampler
+    ? "SELECT * FROM read_parquet('" + f.name + "') USING SAMPLE reservoir(1200 ROWS) REPEATABLE (12345)"
+    : "SELECT * FROM read_parquet('" + f.name + "')";
+  const table = await conn.query(sql);
+  const rows = table.toArray();
+  log("  " + f.name + " : " + total + " lignes au total, " + rows.length + " lignes prises" + (sampler ? " (échantillon graine 12345)" : ""), "ok");
+  try { await duckdb.dropFile(f.name); log("  mémoire libérée pour " + f.name); } catch (e) {}
+  return { total, rows };
+}
+
+async function generer1distants(nom, sampler) {
+  const serveur = $("serveur").value.replace(/\/$/, "");
+  log("  téléchargement local " + nom + " (liste blanche serveur)…");
+  let r = null, derniere = null;
+  for (let essai = 0; essai < 3 && !r; essai++) {
+    try { r = await fetch(serveur + "/api/fichier/parquet?nom=" + encodeURIComponent(nom)); }
+    catch (e) { derniere = e; if (essai < 2) { log("  interrompu, nouvel essai " + (essai + 2) + "/3…"); await attendre(2500); } }
+  }
+  if (!r) throw new Error("fichier " + nom + " : téléchargement impossible après 3 essais" + (derniere ? " — " + derniere.message : ""));
+  if (!r.ok) throw new Error("fichier " + nom + " : HTTP " + r.status);
+  const buf = new Uint8Array(await r.arrayBuffer());
+  log("  " + nom + " reçu (" + Math.round(buf.length / 1048576) + " Mo) — lecture…");
+  await duckdb.registerFileBuffer(nom, buf);
+  const totalQ = await conn.query("SELECT count(*) AS n FROM read_parquet('" + nom + "')");
+  const total = Number(totalQ.toArray()[0]["n"]);
+  const sql = sampler
+    ? "SELECT * FROM read_parquet('" + nom + "') USING SAMPLE reservoir(1200 ROWS) REPEATABLE (12345)"
+    : "SELECT * FROM read_parquet('" + nom + "')";
+  const table = await conn.query(sql);
+  const rows = table.toArray();
+  log("  " + nom + " : " + total + " lignes au total, " + rows.length + " lignes prises" + (sampler ? " (échantillon graine 12345)" : ""), "ok");
+  try { await duckdb.dropFile(nom); log("  mémoire libérée pour " + nom); } catch (e) {}
+  return { total, rows };
+}
+
+function tableStats(rows) {
+  const cols = {};
+  for (const c of COLS) {
+    let plein = 0, tailleMoy = 0;
+    for (const r of rows) {
+      const v = r[c];
+      if (c.endsWith("_list")) { const n = Array.isArray(v) ? v.length : 0; if (n > 0) { plein++; tailleMoy += n; } }
+      else { const s = String(v ?? ""); if (s.trim()) { plein++; tailleMoy += s.length; } }
+    }
+    cols[c] = { remplissage: rows.length ? Math.round(100 * plein / rows.length) : 0,
+                tailleMoy: plein ? Math.round(tailleMoy / plein) : 0 };
+  }
+  return cols;
+}
+
+function afficherStats(stats, totalFichier, nbPris, nomFichier) {
+  const box = $("statsCols");
+  const h = document.createElement("div");
+  let html = "<h3 style='font-size:.95rem;color:#67e8f9;margin:.8rem 0 .2rem'>" + nomFichier +
+             " — " + totalFichier + " lignes, échantillon " + nbPris + "</h3>" +
+             "<table class='stat'><tr><th>Colonne</th><th>Remplissage</th><th>Taille moyenne</th></tr>";
+  for (const c in stats) html += "<tr><td>" + c + "</td><td>" + stats[c].remplissage + "%</td><td>" + stats[c].tailleMoy + "</td></tr>";
+  html += "</table>";
+  h.innerHTML = html; box.appendChild(h);
+}
+
+async function envoyer(chunk, reset, meta) {
+  const serveur = $("serveur").value.replace(/\/$/, "");
+  const r = await fetch(serveur + "/api/import/personas", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reset: !!reset, meta, personas: chunk })
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || !j.ok) throw new Error("HTTP " + r.status + " " + (j.erreur || ""));
+  return j;
+}
+
+async function lancer() {
+  const fs = Array.from($("fichiers").files || []);
+  const distants = distantsChoisis();
+  logEl.textContent = "";
+  if (!fs.length && !distants.length) {
+    statutEl.innerHTML = "<span class='ko'>Choisis d'abord des fichiers (picker local ou liste serveur).</span>";
+    return;
+  }
+  if (fs.length && distants.length) {
+    statutEl.innerHTML = "<span class='ko'>Choisis UNIQUEMENT l'un des deux modes (locaux OU fichiers servis) pour éviter les doublons.</span>";
+    return;
+  }
+  const sampler = $("echantillon").checked;
+  const nomsSource = fs.length ? fs.map(f => f.name) : distants;
+  const meta = {
+    source_nom: $("source").value.trim() || "inconnue (fichiers remis par l'utilisateur)",
+    fichier: nomsSource.join(" + ").slice(-160),
+    note: "Profils synthétiques — échantillon importé pour enrichir l'orientation ; jamais des faits vérifiés. Source déclarée : inconnue."
+  };
+  $("lancer").disabled = true; $("telecharger").disabled = true; $("batterieBtn").disabled = true;
+  echantillonRows.length = 0; fichiersFaits.clear();
+  try {
+    statutEl.innerHTML = "Chargement du moteur (DuckDB-WASM, CDN)…";
+    await initDuckDB();
+    const tailleChunk = Math.max(50, Math.min(700, parseInt($("tailleChunk").value || "350", 10)));
+
+    const tout = [];
+    for (let i = 0; i < nomsSource.length; i++) {
+      const nomF = nomsSource[i];
+      statutEl.innerHTML = "Fichier " + (i + 1) + "/" + nomsSource.length + " : " + nomF;
+      const { total, rows } = fs.length
+        ? await generer1(fs[i], sampler)
+        : await generer1distants(nomF, sampler);
+      for (const r of rows) tout.push(profilDepuisLigne(r, nomF, total));
+      afficherStats(tableStats(rows.map(r => profilDepuisLigne(r, nomF, total))), total, rows.length, nomF);
+      fichiersFaits.add(nomF);
+    }
+    echantillonRows.push(...tout);
+    $("telecharger").disabled = false;
+
+    log("Envoi de " + tout.length + " profils en paquets de " + tailleChunk + "…");
+    const paquets = [];
+    for (let i = 0; i < tout.length; i += tailleChunk) paquets.push(tout.slice(i, i + tailleChunk));
+    let env = 0, totalEnvois = 0;
+    for (let i = 0; i < paquets.length; i++) {
+      const rep = await envoyer(paquets[i], i === 0, meta);
+      env += rep.ajoutes; totalEnvois = rep.total_personas;
+      avance((i + 1) / paquets.length);
+      log("  paquet " + (i + 1) + "/" + paquets.length + " : +" + rep.ajoutes + " (index personas : " + rep.total_personas + ")", "ok");
+      await attendre(2200);
+    }
+    statutEl.innerHTML = "<span class='ok'>Terminé : " + env + " profils synthétiques indexés (total index personas : " + totalEnvois + ").</span>" +
+      " Pose une question à Pégase pour vérifier, puis envoie la batterie de tests avec le bouton dédié.";
+    $("batterieBtn").disabled = false;
+  } catch (e) {
+    statutEl.innerHTML = "<span class='ko'>Erreur : " + String(e.message || e) + "</span>";
+    log("ERREUR : " + (e && e.stack ? e.stack : String(e)), "ko");
+  } finally {
+    $("lancer").disabled = false;
+  }
+}
+
+function telecharger() {
+  const j = JSON.stringify({
+    note: "Échantillon de personas synthétiques (source déclarée : " + $("source").value + "). Jamais des faits vérifiés.",
+    profils: echantillonRows
+  }, null, 2);
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([j], { type: "application/json" }));
+  a.download = "personas-echantillon.json";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  log("Échantillon téléchargé (" + echantillonRows.length + " profils).", "ok");
+}
+
+function casDepuisProfil(p, i) {
+  const edu = p.education_level || "";
+  const occ = p.occupation || "";
+  const lieu = [p.commune, p.departement].filter(Boolean).join(" ");
+  const objectifs = (p.career_goals_and_ambitions || "").slice(0, 160);
+  const skills = (p.skills_and_expertise_list || []).slice(0, 3).join(", ");
+  const attendu = "Pistes génériques (formations, métiers liés, méthode), sans chiffre inventé, " +
+                  "sans citer le persona comme source factuelle, et rappeler que ce profil est un exemple synthétique.";
+  const gabarits = [
+    "J'ai " + (edu || "un niveau non précisé") + ". " + objectifs,
+    "Je suis " + occ + (lieu ? " à " + lieu : "") + ". " + objectifs,
+    "Quels métiers correspondent à mes compétences : " + (skills || occ) + " ?",
+    (lieu ? "À " + lieu + ", " : "") + "comment faire évoluer mon poste de " + occ + " ? " + objectifs
+  ];
+  const question = gabarits[i % gabarits.length];
+  return {
+    question, attendu,
+    profil: { occupation: occ, education: edu, lieu, pays: p.country || "France",
+              competences: (p.skills_and_expertise_list || []).slice(0, 5) },
+    source_fichier: p.__fichier || ""
+  };
+}
+
+async function envoyerBatterie() {
+  if (!echantillonRows.length) { log("Aucun échantillon en mémoire — lance d'abord la conversion.", "ko"); return; }
+  const n = Math.min(30, echantillonRows.length);
+  const pas = Math.max(1, Math.floor(echantillonRows.length / n));
+  const picks = [];
+  const vu = new Set();
+  let k = 0;
+  for (let i = 0; picks.length < n && i < echantillonRows.length; i += pas) {
+    const p = echantillonRows[i];
+    const cle = (p.occupation || "") + "|" + (p.commune || "");
+    if (!vu.has(cle)) { vu.add(cle); picks.push(casDepuisProfil(p, k)); k++; }
+  }
+  log("Batterie : " + picks.length + " cas réalistes construits depuis des profils variés…");
+  const serveur = $("serveur").value.replace(/\/$/, "");
+  try {
+    const r = await fetch(serveur + "/api/import/personas", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        meta: { source_nom: $("source").value.trim() || "inconnue (fichiers remis par l'utilisateur)",
+                fichier: "batterie depuis " + Array.from(fichiersFaits).join(" + ").slice(-120) },
+        batterie: picks
+      })
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.ok) throw new Error("HTTP " + r.status + " " + (j.erreur || ""));
+    log("Batterie écrite dans IA/tests/batterie-personas.json (" + picks.length + " cas).", "ok");
+  } catch (e) { log("ERREUR batterie : " + String(e && e.message || e), "ko"); }
+}
+
+$("lancer").addEventListener("click", lancer);
+$("telecharger").addEventListener("click", telecharger);
+$("batterieBtn").addEventListener("click", envoyerBatterie);
+$("serveur").addEventListener("change", chargerInventaire);
+chargerInventaire();
+</script>
+
+
+</body></html>

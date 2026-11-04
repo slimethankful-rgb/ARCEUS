@@ -1,0 +1,127 @@
+﻿
+--------------------------------------------------------
+ 8. ANIMATIONS PREMIUM (GSAP) - ce qu'il faut savoir
+--------------------------------------------------------
+ Les animations premium sont AUTOMATIQUES : rien a activer.
+ Si gsap.min.js / ScrollTrigger.min.js / animations.js
+ manquent a cote d'index.html, le site fonctionne quand meme :
+ il garde ses petites animations d'origine (repli gracieux).
+
+ Ce que la version premium ajoute :
+   * Titre du heros : chaque mot glisse de bas en haut dans
+     son cache ; le texte degrade dore reste ENTIER (il n'est
+     pas decoupe, sinon il deviendrait invisible).
+   * Entree du heros choregraphiee : badge, titre, texte,
+     boutons, cartes, chiffres cles.
+   * Revelations au defilement groupees et douces (l'ancien
+     systeme reste branche en secours, sans conflit).
+   * Le menu glisse un peu quand tu commences a lire
+     (hauteur 72 vers 60 px, animee par GSAP).
+   * Le menu mobile s'ouvre en fondu-glissement.
+   * Les questions du test s'enchainent en douceur.
+   * Appui sur les boutons : leger enfoncement.
+   * Sur grand ecran (901 px et plus), le texte du heros
+     glisse en profondeur pendant le defilement.
+
+ Accessibilite : les lecteurs d'ecran lisent toujours le
+ titre entier ; la navigation clavier est intacte.
+ A la demande du proprietaire (23/10/2026), le site anime
+ MEME si le reglage Windows "animations reduites" est actif.
+ Pour retablir le respect de ce reglage, voir le commentaire
+ "Choix EXPRES" en haut de animations.js.
+
+--------------------------------------------------------
+ 9. IA "PEGASE" AMELIOREE + RAG (ce que c'est, comment l'activer)
+--------------------------------------------------------
+ PEGASE EST PLUS PUISSANT MAINTENANT, SANS RIEN ACTIVER :
+
+   * Les reponses IA LONGUES s'affichent correctement :
+     titres, listes, tableaux, code — le bug des symboles
+     "##" et "**" affiches en texte brut est corrige
+     (rendu markdown).
+   * Pégase garde le FIL de la conversation : tu peux
+     demander "et le salaire ?" apres une reponse, il
+     comprend (historique de session).
+   * Si une reponse est COUPEE par la limite du modele IA,
+     un bouton "Continuer la reponse" apparait : le clic
+     relance Pégase exactement ou il s'etait arrete,
+     sans repetition.
+   * Le prompt-systeme professionnel (conseiller
+     international d'orientation) est assemble COTE
+     SERVEUR : le navigateur ne peut plus le deformer.
+   * Nouvel outil dans le chat : un bouton disquette sauve
+     TOUTE la base de connaissances du site vers la partie
+     IA (metiers, universites, pays, medecine, FAQ,
+     histoires) — rien d'invente : ce que le site contient
+     deja. La base IA suit les mises a jour du site.
+
+ OPTION 1 - PROXY IA LOCAL (recommande)
+ --------------------------------------------------------
+ 1. Cree le fichier  IA\config\secrets.env  (copie le modele
+    IA\config\.env.example), avec ta cle : IA_KEY=sk-xxxx
+ 2. Lance :  powershell -ExecutionPolicy Bypass -File serveur-ia.ps1
+ 3. Ta cle reste sur CETTE machine (IA\config\secrets.env) :
+    jamais dans le navigateur, jamais dans le code du site.
+    Sans le serveur, tout marche quand meme (moteur integre).
+
+ Pour beneficiar des deux : ouvre le site via le port IA :
+    http://localhost:8766/index.html
+
+ OPTION 2 - SUPABASE + pgvector (base de connaissances evolutive)
+ --------------------------------------------------------
+ (detail complet dans IA\README.md) : projet gratuit sur
+ supabase.com, puis executer dans l'ordre : IA\sql\0001 → 0002 →
+ 0003 → 0004, puis le contenu de IA\sql\seed\0000_donnees_arceus.sql
+ (genere par le bouton de sauvegarde). Remplis ensuite
+ SUPABASE_URL + SUPABASE_KEY dans secrets.env : la recherche
+ devient HYBRIDE (mots-cles + semantique). Sans compte :
+ tout reste fonctionnel en recherche locale TF-IDF.
+
+ 9.c. DATASET DE PERSONAS SYNTHETIQUES (profils FR)
+ --------------------------------------------------------
+ Tu as fourni 2 fichiers .parquet (train-00010/00011-of-00012,
+ ~231 Mo chacun, ~83 000 profils par fichier). SOURCE DECLAREE :
+ INCONNUE — on assume honnetement, l'info est marquee partout.
+
+   * Un convertisseur a ete cree : IA\outils\convertisseur.html
+     (ouvre http://localhost:8766/IA/outils/convertisseur.html ;
+     il tourne DANS le navigateur, rien a installer).
+   * La conversion REELLE a ete executee : 2 400 profils
+     echantillonnes (1 200 par fichier, graine fixe 12345) et
+     indexes pour Pegas (la base serveur est passee de 697 a
+     3 097 documents).
+   * REGLE D'OR : ces profils sont des EXEMPLES INVENTES par
+     une IA (jamais des faits verifies). Chaque fragment
+     porte l'annonce "PROFIL SYNTHETIQUE — jamais un fait
+     verifie" et Pegas ne doit jamais les citer comme sources.
+   * Ou sont les choses : IA\donnees\fragments-personas.jsonl
+     (fichier SEPAR que l'export du site n'ecrase
+     jamais), IA\donnees\personas\personas-001..007.json
+     (archives brutes), IA\tests\batterie-personas.json
+     (30 cas de tests reels construits sur l'echantillon).   * La batterie de tests est PRETE mais NON executee : il
+     faut une cle IA (chemin chat LLM) ; des que IA_KEY est
+     posee, relance le serveur puis teste.
+   * Depuis le 03/11, les personas SERVENT aux reponses :
+     le site affiche 1-2 "Exemples de parcours" etiquettes
+     (SYNTHETIQUE, jamais des faits) sous chaque reponse quand
+     le serveur IA tourne ; avec une cle IA, le chat injecte
+     automatiquement fiches + personas dans son prompt (RAG).
+   * Mise au point (03/11, suite "corrige bugs") : le log serveur
+     nomme maintenant clairement les envois "batterie seule"
+     (avant : "+0 (paquet 0)" trompeur), la reponse ajoute
+     "cas_batterie", et le convertisseur libere la memoire des
+     fichiers parquet (dropFile) des que la lecture est faite
+     (avant : 2 x 231 Mo restes en RAM). Detail : IA\tests\
+     compte-rendu-tests.md, section 7.
+     NB : si le serveur IA est relance, recharger le site (F5) ;
+     les 503 du chat sans cle IA sont normaux (retombee honnete).
+
+ LIMITE HONNETE : l'agent n'a pas eu acces a une cle IA
+ reelle pendant la mission : le chemin proxifie (chat, embeddings,
+ Supabase) est code et ses cas d'erreur sont testes (503 propre,
+ 400, 429, CORS, retombee sur le moteur integre), MAIS il n'a PAS
+ pu etre exécute avec un vrai compte. Detail complet :
+ IA\tests\compte-rendu-tests.md
+
+ BILAN : aucune fonction existante n'a ete retiree ; le site
+ fonctionne comme avant quand l'IA locale n'est pas lancee.
